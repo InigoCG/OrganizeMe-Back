@@ -1,10 +1,9 @@
 package com.organizeme
 
-import com.organizeme.authenticate
-import com.organizeme.data.models.user.User
-import com.organizeme.data.models.user.UserDataSource
 import com.organizeme.data.requests.AuthRequest
 import com.organizeme.data.responses.AuthResponse
+import com.organizeme.data.models.user.User
+import com.organizeme.data.models.user.UserDataSource
 import com.organizeme.security.hashing.HashingService
 import com.organizeme.security.hashing.SaltedHash
 import com.organizeme.security.token.TokenClaim
@@ -17,6 +16,7 @@ import io.ktor.server.auth.jwt.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import org.apache.commons.codec.digest.DigestUtils
 
 fun Route.signUp(
     hashingService: HashingService,
@@ -29,11 +29,12 @@ fun Route.signUp(
         }
 
         val areFieldsBlank = request.username.isBlank() || request.password.isBlank()
-        val isPwTooShort = request.password.length < 6
-        if (areFieldsBlank) {
-            call.respond(HttpStatusCode.Conflict, "The Fields are blank")
+        val isPwTooShort = request.password.length < 8
+        if(areFieldsBlank) {
+            call.respond(HttpStatusCode.Conflict, "There are blank fields")
             return@post
         }
+
         if (isPwTooShort) {
             call.respond(HttpStatusCode.Conflict, "The password is too short")
         }
@@ -44,9 +45,9 @@ fun Route.signUp(
             password = saltedHash.hash,
             salt = saltedHash.salt
         )
-        val wasAcknowedged = userDataSource.insertUser(user)
-        if (!wasAcknowedged) {
-            call.respond(HttpStatusCode.Conflict, "Failed to insert the user")
+        val wasAcknowledged = userDataSource.insertUser(user)
+        if(!wasAcknowledged)  {
+            call.respond(HttpStatusCode.Conflict, "Failed inserting the user")
             return@post
         }
 
@@ -67,8 +68,8 @@ fun Route.signIn(
         }
 
         val user = userDataSource.getUserByUsername(request.username)
-        if (user == null) {
-            call.respond(HttpStatusCode.Conflict, "Incorrect Username or Password")
+        if(user == null) {
+            call.respond(HttpStatusCode.Conflict, "Incorrect username or password")
             return@post
         }
 
@@ -79,8 +80,8 @@ fun Route.signIn(
                 salt = user.salt
             )
         )
-        if (!isValidPassword) {
-            call.respond(HttpStatusCode.Conflict, "Is not a valid password")
+        if(!isValidPassword) {
+            call.respond(HttpStatusCode.Conflict, "Error verifying the password")
             return@post
         }
 
